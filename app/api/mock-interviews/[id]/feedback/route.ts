@@ -1,115 +1,207 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
+import { openai } from "@ai-sdk/openai"
+import { generateText } from "ai"
 
-// Mock AI feedback generation - replace with actual OpenAI API call
-async function generateFeedback(interview: any, responses: any[]) {
-  // Simulate AI processing time
-  await new Promise((resolve) => setTimeout(resolve, 2000))
+// Global storage for interviews
+global.interviews = global.interviews || new Map()
+global.feedbacks = global.feedbacks || new Map()
 
-  // Generate mock feedback based on interview type and responses
-  const mockFeedback = {
-    overallScore: Math.floor(Math.random() * 20) + 80, // 80-100
-    scores: {
-      communication: Math.floor(Math.random() * 15) + 85,
-      technical: Math.floor(Math.random() * 20) + 75,
-      problemSolving: Math.floor(Math.random() * 15) + 85,
-      leadership: Math.floor(Math.random() * 20) + 80,
-    },
-    questionScores: interview.questions.map(() => Math.floor(Math.random() * 20) + 80),
-    questionFeedback: interview.questions.map((q: any, index: number) => {
-      const feedbackOptions = [
-        "Excellent response with clear structure and specific examples. Your use of the STAR method was particularly effective.",
-        "Good answer that demonstrates relevant experience. Consider adding more quantifiable results to strengthen your response.",
-        "Solid response showing good problem-solving skills. Could benefit from more detail about the specific actions you took.",
-        "Strong example that shows leadership qualities. The outcome was well-articulated and measurable.",
-        "Good technical explanation. Consider discussing alternative approaches and trade-offs in future responses.",
-      ]
-      return feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)]
-    }),
-    strengths: [
-      "Clear communication and structured responses",
-      "Good use of specific examples from real experience",
-      "Demonstrated strong problem-solving abilities",
-      "Showed leadership and initiative in challenging situations",
-      "Articulated outcomes and impact effectively",
-    ],
-    improvements: [
-      "Could provide more quantifiable results and metrics",
-      "Consider discussing lessons learned and future applications",
-      "Expand on technical implementation details when relevant",
-      "Include more stakeholder perspective in your examples",
-      "Practice concise storytelling while maintaining detail",
-    ],
-    nextSteps: [
-      `Practice more ${interview.type} questions for your experience level`,
-      "Prepare specific metrics and outcomes for your examples",
-      "Work on concise storytelling for behavioral questions",
-      "Review common technical concepts for your role",
-      "Practice explaining complex topics in simple terms",
-    ],
-    duration: "42m",
-    summary: `Overall strong performance in this ${interview.type} interview. Your responses showed good structure and relevant experience. Focus on adding more quantifiable results and specific metrics to strengthen future interviews.`,
-  }
-
-  return mockFeedback
-}
-
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Fetch interview data
-    const interviewResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/mock-interviews/${params.id}`,
-    )
-    const { interview } = await interviewResponse.json()
+    const { messages, timeElapsed, questionsAnswered } = await request.json()
+    const interviewId = params.id
 
-    // Fetch responses
-    const responsesResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/mock-interviews/${params.id}/responses`,
-    )
-    const { responses } = await responsesResponse.json()
-
-    // Generate comprehensive feedback
-    const feedback = await generateFeedback(interview, responses)
-
-    return NextResponse.json({ feedback })
-  } catch (error) {
-    console.error("Error generating feedback:", error)
-
-    // Return fallback feedback
-    const fallbackFeedback = {
-      overallScore: 85,
-      scores: {
-        communication: 88,
-        technical: 82,
-        problemSolving: 90,
-        leadership: 85,
-      },
-      questionScores: [85, 90, 80, 88, 87],
-      questionFeedback: [
-        "Good response with clear structure. Consider adding more specific examples.",
-        "Excellent use of the STAR method. Strong outcome articulation.",
-        "Solid technical explanation. Could benefit from discussing trade-offs.",
-        "Great leadership example. Well-structured and impactful.",
-        "Good problem-solving approach. Consider mentioning lessons learned.",
-      ],
-      strengths: [
-        "Clear communication and structured responses",
-        "Good use of specific examples",
-        "Demonstrated problem-solving abilities",
-      ],
-      improvements: [
-        "Could provide more quantifiable results",
-        "Consider discussing lessons learned",
-        "Expand on technical details when relevant",
-      ],
-      nextSteps: [
-        "Practice more questions for your experience level",
-        "Prepare specific metrics for examples",
-        "Work on concise storytelling",
-      ],
-      duration: "42m",
-      summary: "Overall strong performance with good communication skills and relevant examples.",
+    if (!global.interviews.has(interviewId)) {
+      return NextResponse.json(
+        { error: "Interview not found" },
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
     }
 
-    return NextResponse.json({ feedback: fallbackFeedback })
+    const interview = global.interviews.get(interviewId)
+
+    // Generate comprehensive feedback using AI
+    const feedbackPrompt = `Analyze this mock interview session and provide detailed feedback.
+
+Interview Details:
+- Position: ${interview.jobTitle}
+- Company: ${interview.company}
+- Experience Level: ${interview.experienceLevel}
+- Duration: ${Math.floor(timeElapsed / 60)} minutes
+- Questions Answered: ${questionsAnswered}
+
+Conversation:
+${messages.map((msg) => `${msg.role}: ${msg.content}`).join("\n")}
+
+Please provide feedback in the following JSON format:
+{
+  "overallScore": <number 0-100>,
+  "categories": {
+    "technical": <number 0-100>,
+    "communication": <number 0-100>,
+    "problemSolving": <number 0-100>,
+    "codeQuality": <number 0-100>
+  },
+  "strengths": [<array of strings>],
+  "improvements": [<array of strings>],
+  "questionAnalysis": [
+    {
+      "question": "<question text>",
+      "userAnswer": "<user's answer>",
+      "score": <number 0-100>,
+      "feedback": "<specific feedback>",
+      "idealAnswer": "<what an ideal answer would include>"
+    }
+  ],
+  "recommendations": [<array of actionable recommendations>]
+}`
+
+    try {
+      const { text } = await generateText({
+        model: openai("gpt-4"),
+        prompt: feedbackPrompt,
+        maxTokens: 2000,
+        temperature: 0.3,
+      })
+
+      let feedback
+      try {
+        feedback = JSON.parse(text)
+      } catch (parseError) {
+        // Fallback feedback if AI response isn't valid JSON
+        feedback = generateFallbackFeedback(messages, questionsAnswered, timeElapsed)
+      }
+
+      // Add additional metadata
+      feedback.timeSpent = timeElapsed
+      feedback.questionsAnswered = questionsAnswered
+
+      // Store feedback
+      global.feedbacks.set(interviewId, feedback)
+
+      return NextResponse.json(
+        { feedback },
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+    } catch (aiError) {
+      console.error("OpenAI API error:", aiError)
+
+      // Generate fallback feedback
+      const feedback = generateFallbackFeedback(messages, questionsAnswered, timeElapsed)
+      global.feedbacks.set(interviewId, feedback)
+
+      return NextResponse.json(
+        { feedback },
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+    }
+  } catch (error) {
+    console.error("Error generating feedback:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to generate feedback",
+        details: error.message,
+      },
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    )
+  }
+}
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const interviewId = params.id
+
+    if (!global.feedbacks.has(interviewId)) {
+      return NextResponse.json(
+        { error: "Feedback not found" },
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+    }
+
+    const feedback = global.feedbacks.get(interviewId)
+
+    return NextResponse.json(
+      { feedback },
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    )
+  } catch (error) {
+    console.error("Error fetching feedback:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to fetch feedback",
+        details: error.message,
+      },
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    )
+  }
+}
+
+function generateFallbackFeedback(messages, questionsAnswered, timeElapsed) {
+  const userMessages = messages.filter((msg) => msg.role === "user")
+  const avgResponseLength = userMessages.reduce((acc, msg) => acc + msg.content.length, 0) / userMessages.length || 0
+
+  // Calculate scores based on simple heuristics
+  const communicationScore = Math.min(100, Math.max(60, avgResponseLength / 10))
+  const technicalScore = Math.min(100, Math.max(65, questionsAnswered * 15))
+  const problemSolvingScore = Math.min(100, Math.max(70, questionsAnswered * 12 + (timeElapsed > 1800 ? 10 : 0)))
+  const codeQualityScore = Math.min(100, Math.max(60, questionsAnswered * 13))
+
+  const overallScore = Math.round((communicationScore + technicalScore + problemSolvingScore + codeQualityScore) / 4)
+
+  return {
+    overallScore,
+    categories: {
+      technical: Math.round(technicalScore),
+      communication: Math.round(communicationScore),
+      problemSolving: Math.round(problemSolvingScore),
+      codeQuality: Math.round(codeQualityScore),
+    },
+    strengths: [
+      "Showed good engagement throughout the interview",
+      "Provided thoughtful responses to questions",
+      "Demonstrated willingness to learn and improve",
+    ],
+    improvements: [
+      "Could provide more detailed technical explanations",
+      "Practice explaining complex concepts more clearly",
+      "Work on structuring responses more effectively",
+    ],
+    questionAnalysis: userMessages.slice(0, 3).map((msg, index) => ({
+      question: `Interview question ${index + 1}`,
+      userAnswer: msg.content.substring(0, 200) + (msg.content.length > 200 ? "..." : ""),
+      score: Math.round(70 + Math.random() * 25),
+      feedback: "Good response with room for more technical depth",
+      idealAnswer: "An ideal answer would include specific examples and technical details",
+    })),
+    recommendations: [
+      "Practice more technical interview questions",
+      "Work on explaining your thought process clearly",
+      "Study system design fundamentals",
+      "Practice coding problems daily",
+      "Improve communication skills",
+    ],
+    timeSpent: timeElapsed,
+    questionsAnswered,
   }
 }

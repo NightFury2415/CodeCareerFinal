@@ -50,7 +50,7 @@ const menuItems = [
 const resourceItems = [
   {
     title: "Interview Guides",
-    url: "/dashboard/guides",
+    url: "/interview-guides",
     icon: BookOpen,
   },
   {
@@ -78,7 +78,7 @@ export function AppSidebar() {
           <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
             <Code className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-white">CareerCode</span>
+          <span className="text-xl font-bold text-white">CodeCareer</span>
         </div>
       </SidebarHeader>
 

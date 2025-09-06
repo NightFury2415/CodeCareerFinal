@@ -3,51 +3,137 @@
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import {
-  Trophy,
+  BarChart3,
   TrendingUp,
-  Target,
-  Clock,
+  TrendingDown,
+  Star,
   CheckCircle,
   AlertCircle,
-  Star,
+  ArrowLeft,
   Download,
-  Share2,
-  RotateCcw,
+  Share,
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export default function InterviewResultsPage({ params }: { params: { id: string } }) {
-  const [interview, setInterview] = useState<any>(null)
-  const [feedback, setFeedback] = useState<any>(null)
-  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(true)
+  const router = useRouter()
+  const [results, setResults] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetchInterviewAndGenerateFeedback()
-  }, [params.id])
+    generateResults()
+  }, [])
 
-  const fetchInterviewAndGenerateFeedback = async () => {
-    try {
-      // Fetch interview data
-      const interviewResponse = await fetch(`/api/mock-interviews/${params.id}`)
-      const interviewData = await interviewResponse.json()
-      setInterview(interviewData.interview)
-
-      // Generate AI feedback
-      const feedbackResponse = await fetch(`/api/mock-interviews/${params.id}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      })
-      const feedbackData = await feedbackResponse.json()
-      setFeedback(feedbackData.feedback)
-    } catch (error) {
-      console.error("Failed to fetch results:", error)
-    } finally {
-      setIsGeneratingFeedback(false)
-    }
+  const generateResults = async () => {
+    // Mock results generation - in real app, this would call your AI analysis API
+    setTimeout(() => {
+      const mockResults = {
+        overallScore: 85,
+        breakdown: {
+          communication: 88,
+          problemSolving: 82,
+          leadership: 87,
+          technicalKnowledge: 83,
+          culturalFit: 86,
+        },
+        questionScores: [
+          {
+            question: "Tell me about a time when you had to work under pressure to meet a tight deadline.",
+            score: 90,
+            feedback: "Excellent use of the STAR method. Your example was specific and showed clear results.",
+          },
+          {
+            question: "Describe a situation where you had to resolve a conflict with a team member.",
+            score: 85,
+            feedback:
+              "Good conflict resolution approach. Could have elaborated more on the long-term relationship impact.",
+          },
+          {
+            question: "Give me an example of when you had to learn something new quickly.",
+            score: 88,
+            feedback:
+              "Great demonstration of learning agility. The specific timeline and outcome were well articulated.",
+          },
+          {
+            question: "Tell me about a project you're particularly proud of and why.",
+            score: 92,
+            feedback: "Outstanding response! Clear passion and detailed technical explanation with measurable impact.",
+          },
+          {
+            question: "Describe a time when you had to give difficult feedback to someone.",
+            score: 78,
+            feedback: "Decent approach but could have shown more empathy and follow-up actions.",
+          },
+          {
+            question: "Tell me about a mistake you made and how you handled it.",
+            score: 87,
+            feedback: "Honest and reflective response. Good demonstration of accountability and learning.",
+          },
+          {
+            question: "Describe a situation where you had to influence someone without authority.",
+            score: 83,
+            feedback:
+              "Solid influence tactics shown. Could have mentioned more about understanding the other person's perspective.",
+          },
+          {
+            question: "Give me an example of when you went above and beyond your job requirements.",
+            score: 89,
+            feedback: "Impressive initiative! Clear business impact and proactive thinking demonstrated.",
+          },
+          {
+            question: "Tell me about a time when you had to adapt to a significant change.",
+            score: 81,
+            feedback: "Good adaptability shown. Could have discussed how you helped others adapt as well.",
+          },
+          {
+            question: "Describe a situation where you had to work with a difficult stakeholder.",
+            score: 84,
+            feedback: "Professional approach demonstrated. Good stakeholder management techniques mentioned.",
+          },
+        ],
+        strengths: [
+          "Excellent use of the STAR method in responses",
+          "Strong specific examples with measurable outcomes",
+          "Clear communication and structured thinking",
+          "Good demonstration of leadership qualities",
+          "Honest and reflective about challenges and mistakes",
+        ],
+        improvements: [
+          "Could provide more detail on long-term relationship impacts",
+          "Show more empathy when discussing difficult conversations",
+          "Elaborate on how you help others during changes",
+          "Include more stakeholder perspective considerations",
+          "Add more quantifiable metrics where possible",
+        ],
+        idealAnswers: [
+          {
+            question: "Tell me about a time when you had to work under pressure to meet a tight deadline.",
+            ideal:
+              "An ideal answer would include: (1) Specific context and timeline, (2) Clear actions taken to prioritize and organize work, (3) How you communicated with stakeholders, (4) Measurable results achieved, (5) What you learned for future situations. Your answer was strong but could have included more about stakeholder communication.",
+          },
+          {
+            question: "Describe a situation where you had to resolve a conflict with a team member.",
+            ideal:
+              "The best responses include: (1) Understanding both perspectives, (2) Active listening techniques used, (3) Collaborative solution finding, (4) Follow-up to ensure resolution, (5) Long-term relationship improvement. Consider adding more about the relationship outcome.",
+          },
+        ],
+        nextSteps: [
+          "Practice incorporating more quantifiable metrics in your examples",
+          "Work on showing empathy and emotional intelligence in difficult situations",
+          "Prepare examples that demonstrate helping others through change",
+          "Focus on stakeholder management and perspective-taking",
+          "Continue using the STAR method - you're doing this very well",
+        ],
+      }
+      setResults(mockResults)
+      setIsLoading(false)
+    }, 2000)
   }
 
   const getScoreColor = (score: number) => {
@@ -64,16 +150,15 @@ export default function InterviewResultsPage({ params }: { params: { id: string 
     return "bg-red-500/20"
   }
 
-  if (!interview || isGeneratingFeedback) {
+  if (isLoading) {
     return (
       <SidebarProvider>
-        <div className="flex min-h-screen bg-slate-900">
+        <div className="flex min-h-screen bg-gray-950">
           <AppSidebar />
           <SidebarInset className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <div className="text-white text-lg">Analyzing your interview performance...</div>
-              <div className="text-gray-400 text-sm mt-2">This may take a few moments</div>
+              <div className="text-white">Analyzing your interview performance...</div>
             </div>
           </SidebarInset>
         </div>
@@ -83,266 +168,196 @@ export default function InterviewResultsPage({ params }: { params: { id: string 
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-slate-900">
+      <div className="flex min-h-screen bg-gray-950">
         <AppSidebar />
         <SidebarInset className="flex-1">
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-800 px-4">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-gray-800 px-4">
             <SidebarTrigger className="text-white" />
-            <div className="flex items-center justify-between w-full px-4">
+            <div className="flex items-center gap-2 px-4">
+              <BarChart3 className="w-5 h-5 text-purple-400" />
               <h1 className="text-xl font-semibold text-white">Interview Results</h1>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-slate-600 text-gray-300 hover:bg-slate-700 bg-transparent"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-slate-600 text-gray-300 hover:bg-slate-700 bg-transparent"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Share
-                </Button>
-              </div>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                onClick={() => router.push("/mock-interviews")}
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800 bg-transparent"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Interviews
+              </Button>
+              <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800 bg-transparent">
+                <Download className="w-4 h-4 mr-2" />
+                Download Report
+              </Button>
+              <Button className="bg-purple-600 hover:bg-purple-700">
+                <Share className="w-4 h-4 mr-2" />
+                Share Results
+              </Button>
             </div>
           </header>
 
-          <div className="flex-1 p-6 space-y-6">
-            {/* Overall Score */}
-            <Card className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 border-purple-500/50">
-              <CardContent className="p-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Interview Complete!</h2>
-                    <p className="text-gray-300">
-                      {interview.type.charAt(0).toUpperCase() + interview.type.slice(1)} Interview • {interview.role}
-                      {interview.company && interview.company !== "General" && ` • ${interview.company}`}
-                    </p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      Completed on {new Date(interview.completedAt || Date.now()).toLocaleDateString()}
-                    </p>
+          <div className="flex-1 p-6">
+            <div className="max-w-6xl mx-auto space-y-6">
+              {/* Overall Score */}
+              <Card className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-purple-800/50">
+                <CardHeader className="text-center">
+                  <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-bold text-white">{results.overallScore}</span>
                   </div>
-                  <div className="text-center">
-                    <div className={`text-6xl font-bold ${getScoreColor(feedback?.overallScore || 85)} mb-2`}>
-                      {feedback?.overallScore || 85}
-                    </div>
-                    <div className="text-gray-300">Overall Score</div>
-                    <div className="flex items-center justify-center mt-2">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-5 h-5 ${
-                            i < Math.floor((feedback?.overallScore || 85) / 20)
-                              ? "text-yellow-400 fill-current"
-                              : "text-gray-600"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Performance Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-6 text-center">
-                  <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{feedback?.scores?.communication || 88}</div>
-                  <div className="text-sm text-gray-400">Communication</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-6 text-center">
-                  <Target className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{feedback?.scores?.technical || 82}</div>
-                  <div className="text-sm text-gray-400">Technical Skills</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-6 text-center">
-                  <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{feedback?.scores?.problemSolving || 90}</div>
-                  <div className="text-sm text-gray-400">Problem Solving</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-6 text-center">
-                  <Clock className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{feedback?.duration || "42m"}</div>
-                  <div className="text-sm text-gray-400">Duration</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Detailed Feedback */}
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white">Detailed Feedback</CardTitle>
+                  <CardTitle className="text-white text-2xl">Overall Interview Score</CardTitle>
+                  <CardDescription className="text-gray-300">
+                    Great performance! You demonstrated strong skills across multiple areas.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="text-white font-semibold mb-2 flex items-center">
-                      <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-                      Strengths
-                    </h3>
-                    <ul className="space-y-2">
-                      {(
-                        feedback?.strengths || [
-                          "Clear and structured responses using STAR method",
-                          "Good examples with specific metrics and outcomes",
-                          "Strong communication and articulation skills",
-                          "Demonstrated leadership and problem-solving abilities",
-                        ]
-                      ).map((strength: string, index: number) => (
-                        <li key={index} className="text-gray-300 text-sm flex items-start">
-                          <div className="w-2 h-2 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                          {strength}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              </Card>
 
-                  <div>
-                    <h3 className="text-white font-semibold mb-2 flex items-center">
-                      <AlertCircle className="w-5 h-5 text-yellow-400 mr-2" />
-                      Areas for Improvement
-                    </h3>
-                    <ul className="space-y-2">
-                      {(
-                        feedback?.improvements || [
-                          "Could provide more specific metrics and quantifiable results",
-                          "Consider discussing lessons learned and future applications",
-                          "Expand on technical implementation details when relevant",
-                        ]
-                      ).map((improvement: string, index: number) => (
-                        <li key={index} className="text-gray-300 text-sm flex items-start">
-                          <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                          {improvement}
-                        </li>
-                      ))}
-                    </ul>
+              {/* Score Breakdown */}
+              <Card className="bg-gray-900/50 border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Performance Breakdown</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Detailed analysis of your performance across key competencies
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {Object.entries(results.breakdown).map(([category, score]) => (
+                      <div key={category} className="text-center">
+                        <div
+                          className={`w-16 h-16 ${getScoreBg(score as number)} rounded-full flex items-center justify-center mx-auto mb-2`}
+                        >
+                          <span className={`text-xl font-bold ${getScoreColor(score as number)}`}>{score}</span>
+                        </div>
+                        <h4 className="text-white font-medium capitalize">
+                          {category.replace(/([A-Z])/g, " $1").trim()}
+                        </h4>
+                        <Progress value={score as number} className="mt-2 h-2" />
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Question-by-Question Analysis */}
-              <Card className="bg-slate-800/50 border-slate-700">
+              <Card className="bg-gray-900/50 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-white">Question Analysis</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Detailed feedback for each interview question
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {interview.questions.map((question: any, index: number) => (
-                    <div key={index} className="p-4 bg-slate-700/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Question {index + 1}</h4>
-                        <div
-                          className={`px-2 py-1 rounded text-xs font-medium ${getScoreBg(feedback?.questionScores?.[index] || 85)} ${getScoreColor(feedback?.questionScores?.[index] || 85)}`}
-                        >
-                          {feedback?.questionScores?.[index] || 85}/100
+                  {results.questionScores.map((item: any, index: number) => (
+                    <div key={index} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium mb-1">Question {index + 1}</h4>
+                          <p className="text-gray-400 text-sm">{item.question}</p>
                         </div>
+                        <Badge className={`${getScoreBg(item.score)} ${getScoreColor(item.score)} ml-4`}>
+                          {item.score}/100
+                        </Badge>
                       </div>
-                      <p className="text-gray-300 text-sm mb-3">{question.question}</p>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="text-xs text-gray-400 uppercase tracking-wide">Feedback:</span>
-                          <p className="text-gray-300 text-sm">
-                            {feedback?.questionFeedback?.[index] ||
-                              "Good response with clear structure. Consider adding more specific examples and quantifiable outcomes to strengthen your answer."}
-                          </p>
-                        </div>
-                      </div>
+                      <p className="text-gray-300 text-sm">{item.feedback}</p>
                     </div>
                   ))}
                 </CardContent>
               </Card>
-            </div>
 
-            {/* AI Insights */}
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white">AI Insights & Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-white font-semibold mb-3">Interview Performance Trends</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-400">Response Quality</span>
-                          <span className="text-white">88%</span>
-                        </div>
-                        <Progress value={88} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-400">Structure & Clarity</span>
-                          <span className="text-white">92%</span>
-                        </div>
-                        <Progress value={92} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-400">Depth of Examples</span>
-                          <span className="text-white">78%</span>
-                        </div>
-                        <Progress value={78} className="h-2" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-white font-semibold mb-3">Next Steps</h3>
-                    <ul className="space-y-2">
-                      {(
-                        feedback?.nextSteps || [
-                          "Practice more technical system design questions",
-                          "Prepare specific metrics for your project examples",
-                          "Work on concise storytelling for behavioral questions",
-                          "Review common algorithms and data structures",
-                        ]
-                      ).map((step: string, index: number) => (
-                        <li key={index} className="text-gray-300 text-sm flex items-start">
-                          <div className="w-2 h-2 bg-purple-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                          {step}
+              {/* Strengths and Improvements */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <TrendingUp className="w-5 h-5 mr-2 text-green-400" />
+                      Strengths
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {results.strengths.map((strength: string, index: number) => (
+                        <li key={index} className="flex items-start space-x-3">
+                          <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-300">{strength}</span>
                         </li>
                       ))}
                     </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
-            {/* Action Buttons */}
-            <div className="flex justify-center space-x-4">
-              <Button
-                onClick={() => (window.location.href = "/mock-interviews")}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Take Another Interview
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => (window.location.href = "/problems")}
-                className="border-slate-600 text-gray-300 hover:bg-slate-700 bg-transparent"
-              >
-                Practice Coding Problems
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => (window.location.href = "/dashboard/jobs")}
-                className="border-slate-600 text-gray-300 hover:bg-slate-700 bg-transparent"
-              >
-                Browse Jobs
-              </Button>
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <TrendingDown className="w-5 h-5 mr-2 text-orange-400" />
+                      Areas for Improvement
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {results.improvements.map((improvement: string, index: number) => (
+                        <li key={index} className="flex items-start space-x-3">
+                          <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-300">{improvement}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Ideal Answers */}
+              <Card className="bg-gray-900/50 border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <Star className="w-5 h-5 mr-2 text-yellow-400" />
+                    Ideal Answer Examples
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Learn what makes a perfect response to these types of questions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {results.idealAnswers.map((item: any, index: number) => (
+                    <div key={index} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                      <h4 className="text-white font-medium mb-2">{item.question}</h4>
+                      <p className="text-gray-300 text-sm leading-relaxed">{item.ideal}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Next Steps */}
+              <Card className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-800/50">
+                <CardHeader>
+                  <CardTitle className="text-white">Next Steps for Improvement</CardTitle>
+                  <CardDescription className="text-gray-300">
+                    Actionable recommendations to enhance your interview performance
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {results.nextSteps.map((step: string, index: number) => (
+                      <li key={index} className="flex items-start space-x-3">
+                        <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                          <span className="text-blue-400 text-sm font-bold">{index + 1}</span>
+                        </div>
+                        <span className="text-gray-300">{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4">
+                <Button onClick={() => router.push("/mock-interviews")} className="bg-purple-600 hover:bg-purple-700">
+                  Practice Another Interview
+                </Button>
+                <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800 bg-transparent">
+                  Save to Profile
+                </Button>
+              </div>
             </div>
           </div>
         </SidebarInset>

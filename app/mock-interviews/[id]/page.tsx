@@ -8,205 +8,180 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, Clock, Brain, Send, Mic, MicOff } from "lucide-react"
+import { MessageSquare, Clock, Send, Bot, User, CheckCircle, ArrowRight } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+
+interface Message {
+  id: string
+  type: "ai" | "user"
+  content: string
+  timestamp: string
+  questionNumber?: number
+}
 
 export default function MockInterviewSessionPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
   const [interview, setInterview] = useState<any>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [currentInput, setCurrentInput] = useState("")
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [timeRemaining, setTimeRemaining] = useState(300) // 5 minutes
-  const [sessionStarted, setSessionStarted] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [userResponse, setUserResponse] = useState("")
-  const [isAiThinking, setIsAiThinking] = useState(false)
-  const [chatHistory, setChatHistory] = useState<any[]>([])
-  const [sessionComplete, setSessionComplete] = useState(false)
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSessionStarted, setIsSessionStarted] = useState(false)
+  const [isSessionComplete, setIsSessionComplete] = useState(false)
+  const [isAiTyping, setIsAiTyping] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchInterview()
   }, [params.id])
 
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (sessionStarted && timeRemaining > 0 && !sessionComplete) {
-      interval = setInterval(() => {
-        setTimeRemaining((time) => {
-          if (time <= 1) {
-            // Auto-advance to next question when time runs out
-            handleNextQuestion()
-            return 300
-          }
-          return time - 1
-        })
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [sessionStarted, timeRemaining, sessionComplete])
+    scrollToBottom()
+  }, [messages])
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [chatHistory])
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   const fetchInterview = async () => {
     try {
-      const response = await fetch(`/api/mock-interviews/${params.id}`)
-      const data = await response.json()
-      setInterview(data.interview)
+      // Mock fetch - in real app, this would fetch from your API
+      const mockInterview = {
+        id: params.id,
+        jobTitle: "Software Engineer",
+        jobLevel: "mid",
+        company: "Google",
+        interviewType: "behavioral",
+        focusAreas: "leadership, problem-solving",
+        questions: [
+          "Tell me about a time when you had to work under pressure to meet a tight deadline.",
+          "Describe a situation where you had to resolve a conflict with a team member.",
+          "Give me an example of when you had to learn something new quickly.",
+          "Tell me about a project you're particularly proud of and why.",
+          "Describe a time when you had to give difficult feedback to someone.",
+          "Tell me about a mistake you made and how you handled it.",
+          "Describe a situation where you had to influence someone without authority.",
+          "Give me an example of when you went above and beyond your job requirements.",
+          "Tell me about a time when you had to adapt to a significant change.",
+          "Describe a situation where you had to work with a difficult stakeholder.",
+        ],
+        status: "created",
+      }
+      setInterview(mockInterview)
     } catch (error) {
       console.error("Failed to fetch interview:", error)
-    }
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const startSession = async () => {
-    setSessionStarted(true)
-    setIsRecording(true)
-
-    // Update interview status
-    await fetch(`/api/mock-interviews/${params.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "in_progress", startedAt: new Date().toISOString() }),
-    })
-
-    // Add initial AI greeting
-    const greeting = `Hello! I'm your AI interviewer for today's ${interview?.type} interview. I'll be asking you questions for the ${interview?.role} position${interview?.company && interview.company !== "General" ? ` at ${interview?.company}` : ""}. 
-
-We have ${interview?.questions?.length} questions to cover, and you'll have about 5 minutes per question. Feel free to take your time to think through your answers.
-
-Let's start with our first question: ${interview?.questions[0]?.question}`
-
-    setChatHistory([
-      {
-        type: "ai",
-        message: greeting,
-        timestamp: new Date().toISOString(),
-        questionIndex: 0,
-      },
-    ])
-  }
-
-  const sendResponse = async () => {
-    if (!userResponse.trim()) return
-
-    const newUserMessage = {
-      type: "user",
-      message: userResponse,
-      timestamp: new Date().toISOString(),
-      questionIndex: currentQuestion,
-    }
-
-    setChatHistory((prev) => [...prev, newUserMessage])
-    setIsAiThinking(true)
-
-    try {
-      const response = await fetch(`/api/mock-interviews/${params.id}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userResponse,
-          currentQuestion,
-          chatHistory: [...chatHistory, newUserMessage],
-          interview,
-        }),
-      })
-
-      const data = await response.json()
-
-      const aiMessage = {
-        type: "ai",
-        message: data.response,
-        timestamp: new Date().toISOString(),
-        questionIndex: currentQuestion,
-      }
-
-      setChatHistory((prev) => [...prev, aiMessage])
-      setUserResponse("")
-
-      // Save the response
-      await fetch(`/api/mock-interviews/${params.id}/responses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionIndex: currentQuestion,
-          userResponse: userResponse,
-          aiResponse: data.response,
-        }),
-      })
-    } catch (error) {
-      console.error("Failed to send message:", error)
-      const errorMessage = {
-        type: "ai",
-        message: "I apologize, but I'm having trouble processing your response. Could you please try again?",
-        timestamp: new Date().toISOString(),
-        questionIndex: currentQuestion,
-      }
-      setChatHistory((prev) => [...prev, errorMessage])
     } finally {
-      setIsAiThinking(false)
+      setIsLoading(false)
     }
   }
 
-  const handleNextQuestion = async () => {
-    if (currentQuestion < interview.questions.length - 1) {
-      const nextIndex = currentQuestion + 1
-      setCurrentQuestion(nextIndex)
-      setTimeRemaining(300) // Reset timer for next question
-
-      const nextQ = interview.questions[nextIndex]
-      const aiMessage = {
-        type: "ai",
-        message: `Thank you for that response. Let's move on to our next question: ${nextQ.question}`,
-        timestamp: new Date().toISOString(),
-        questionIndex: nextIndex,
-      }
-      setChatHistory((prev) => [...prev, aiMessage])
-    } else {
-      // Interview complete
-      await completeInterview()
-    }
-  }
-
-  const completeInterview = async () => {
-    setSessionComplete(true)
-    setIsRecording(false)
-
-    // Update interview status
-    await fetch(`/api/mock-interviews/${params.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: "completed",
-        completedAt: new Date().toISOString(),
-        chatHistory,
-      }),
-    })
-
-    const completionMessage = {
+  const startInterview = () => {
+    setIsSessionStarted(true)
+    const welcomeMessage: Message = {
+      id: Date.now().toString(),
       type: "ai",
-      message:
-        "Excellent! We've completed all the questions. I'm now analyzing your responses to provide detailed feedback. You'll be redirected to your results page shortly.",
-      timestamp: new Date().toISOString(),
-      questionIndex: currentQuestion,
-    }
-    setChatHistory((prev) => [...prev, completionMessage])
+      content: `Hello! I'm your AI interviewer for today's ${interview.interviewType} interview for the ${interview.jobTitle} position${interview.company !== "General" ? ` at ${interview.company}` : ""}. 
 
-    // Redirect to results after a short delay
+I'll be asking you 10 questions, and we'll have a natural conversation about each one. Feel free to take your time with your responses, and don't hesitate to ask for clarification if needed.
+
+Let's begin with our first question:
+
+**Question 1:** ${interview.questions[0]}`,
+      timestamp: new Date().toISOString(),
+      questionNumber: 1,
+    }
+    setMessages([welcomeMessage])
+  }
+
+  const sendMessage = async () => {
+    if (!currentInput.trim() || isAiTyping) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      content: currentInput,
+      timestamp: new Date().toISOString(),
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setCurrentInput("")
+    setIsAiTyping(true)
+
+    // Simulate AI processing time
+    setTimeout(async () => {
+      const aiResponse = await generateAIResponse(currentInput, currentQuestion)
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: aiResponse,
+        timestamp: new Date().toISOString(),
+        questionNumber: currentQuestion < 9 ? currentQuestion + 2 : undefined,
+      }
+
+      setMessages((prev) => [...prev, aiMessage])
+
+      if (currentQuestion < 9) {
+        setCurrentQuestion((prev) => prev + 1)
+      } else {
+        // Interview complete
+        setTimeout(() => {
+          completeInterview()
+        }, 2000)
+      }
+
+      setIsAiTyping(false)
+    }, 2000)
+  }
+
+  const generateAIResponse = async (userResponse: string, questionIndex: number) => {
+    // Mock AI responses with follow-up questions
+    const followUpResponses = [
+      "That's a great example! I can see you handled the pressure well. Can you tell me more about what specific strategies you used to prioritize your tasks?",
+      "Interesting approach to conflict resolution. How did you ensure both parties felt heard during this process?",
+      "That shows great adaptability! What was the most challenging part of learning that new skill so quickly?",
+      "I love hearing about projects people are passionate about. What impact did this project have on your team or organization?",
+      "Giving feedback can be tough. How did you prepare for that conversation, and what was the outcome?",
+      "Thank you for being so honest about that mistake. What systems or processes did you put in place to prevent similar issues?",
+      "That's a valuable skill - influencing without authority. What techniques did you find most effective in that situation?",
+      "Going above and beyond shows great initiative. How did your manager and team react to your extra efforts?",
+      "Change can be challenging for everyone. How did you help others on your team adapt to this change as well?",
+      "Working with difficult stakeholders is a common challenge. What did you learn from this experience that you've applied since?",
+    ]
+
+    if (questionIndex < 9) {
+      return `${followUpResponses[questionIndex]}
+
+Let's move on to our next question:
+
+**Question ${questionIndex + 2}:** ${interview.questions[questionIndex + 1]}`
+    } else {
+      return `Thank you for that final response. You've completed all 10 questions! 
+
+I'm now analyzing your responses to provide you with detailed feedback on your performance. This includes:
+
+• Overall interview score and breakdown
+• Strengths you demonstrated
+• Areas for improvement  
+• Specific suggestions for better answers
+• Comparison to typical responses for your experience level
+
+You'll be redirected to your detailed feedback report in just a moment. Great job completing the interview!`
+    }
+  }
+
+  const completeInterview = () => {
+    setIsSessionComplete(true)
     setTimeout(() => {
-      window.location.href = `/mock-interviews/${params.id}/results`
+      router.push(`/mock-interviews/${params.id}/results`)
     }, 3000)
   }
 
-  if (!interview) {
+  if (isLoading) {
     return (
       <SidebarProvider>
-        <div className="flex min-h-screen bg-slate-900">
+        <div className="flex min-h-screen bg-gray-950">
           <AppSidebar />
           <SidebarInset className="flex-1 flex items-center justify-center">
             <div className="text-white">Loading interview...</div>
@@ -216,82 +191,13 @@ Let's start with our first question: ${interview?.questions[0]?.question}`
     )
   }
 
-  if (!sessionStarted) {
+  if (!interview) {
     return (
       <SidebarProvider>
-        <div className="flex min-h-screen bg-slate-900">
+        <div className="flex min-h-screen bg-gray-950">
           <AppSidebar />
-          <SidebarInset className="flex-1">
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-800 px-4">
-              <SidebarTrigger className="text-white" />
-              <div className="flex items-center gap-2 px-4">
-                <h1 className="text-xl font-semibold text-white">Mock Interview Session</h1>
-              </div>
-            </header>
-
-            <div className="flex-1 flex items-center justify-center p-6">
-              <Card className="bg-slate-800/50 border-slate-700 max-w-2xl w-full">
-                <CardHeader className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Brain className="w-8 h-8 text-white" />
-                  </div>
-                  <CardTitle className="text-white text-2xl">Ready to Start Your Interview?</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="text-center text-gray-400">
-                    <p className="mb-2">
-                      <strong className="text-white">
-                        {interview.type.charAt(0).toUpperCase() + interview.type.slice(1)}
-                      </strong>{" "}
-                      interview for <strong className="text-white">{interview.role}</strong>
-                      {interview.company && interview.company !== "General" && (
-                        <>
-                          {" "}
-                          at <strong className="text-white">{interview.company}</strong>
-                        </>
-                      )}
-                    </p>
-                    <p>
-                      Experience Level: <strong className="text-white">{interview.experience}</strong>
-                    </p>
-                    <p className="mt-2">You'll have 5 minutes per question to provide your answer.</p>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="p-4 bg-slate-700/50 rounded-lg">
-                      <div className="text-2xl font-bold text-white">{interview.questions.length}</div>
-                      <div className="text-sm text-gray-400">Questions</div>
-                    </div>
-                    <div className="p-4 bg-slate-700/50 rounded-lg">
-                      <div className="text-2xl font-bold text-white">{interview.questions.length * 5}</div>
-                      <div className="text-sm text-gray-400">Minutes</div>
-                    </div>
-                    <div className="p-4 bg-slate-700/50 rounded-lg">
-                      <div className="text-2xl font-bold text-white">AI</div>
-                      <div className="text-sm text-gray-400">Powered</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-white font-semibold">Interview Tips:</h3>
-                    <ul className="space-y-2 text-gray-400">
-                      <li>• Make sure you're in a quiet environment</li>
-                      <li>• Use the STAR method for behavioral questions</li>
-                      <li>• Take your time to think before answering</li>
-                      <li>• Be specific with examples and outcomes</li>
-                      <li>• Ask clarifying questions if needed</li>
-                    </ul>
-                  </div>
-
-                  <Button
-                    onClick={startSession}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-lg py-6"
-                  >
-                    Start Interview
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+          <SidebarInset className="flex-1 flex items-center justify-center">
+            <div className="text-white">Interview not found</div>
           </SidebarInset>
         </div>
       </SidebarProvider>
@@ -300,200 +206,194 @@ Let's start with our first question: ${interview?.questions[0]?.question}`
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-slate-900">
+      <div className="flex min-h-screen bg-gray-950">
         <AppSidebar />
         <SidebarInset className="flex-1">
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-800 px-4">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-gray-800 px-4">
             <SidebarTrigger className="text-white" />
-            <div className="flex items-center justify-between w-full px-4">
-              <h1 className="text-xl font-semibold text-white">Interview in Progress</h1>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-white">
-                  <Clock className="w-4 h-4" />
-                  <span className="font-mono text-lg">{formatTime(timeRemaining)}</span>
-                </div>
-                <Badge className="bg-red-500/20 text-red-400">
-                  Question {currentQuestion + 1} of {interview.questions.length}
-                </Badge>
-              </div>
+            <div className="flex items-center gap-2 px-4">
+              <MessageSquare className="w-5 h-5 text-purple-400" />
+              <h1 className="text-xl font-semibold text-white">Mock Interview Session</h1>
             </div>
+            {isSessionStarted && (
+              <div className="ml-auto flex items-center gap-4">
+                <Badge className="bg-purple-500/20 text-purple-400">Question {currentQuestion + 1} of 10</Badge>
+                <div className="flex items-center gap-2 text-white">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm">In Progress</span>
+                </div>
+              </div>
+            )}
           </header>
 
           <div className="flex-1 p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-              {/* Chat Interface */}
-              <div className="lg:col-span-2">
-                <Card className="bg-slate-800/50 border-slate-700 h-full flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <MessageSquare className="w-5 h-5 mr-2" />
-                      AI Interview Chat
-                      {isRecording && (
-                        <div className="ml-auto flex items-center space-x-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                          <span className="text-sm text-red-400">Recording</span>
-                        </div>
-                      )}
-                    </CardTitle>
+            {!isSessionStarted ? (
+              /* Pre-Interview Setup */
+              <div className="max-w-2xl mx-auto">
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="w-8 h-8 text-white" />
+                    </div>
+                    <CardTitle className="text-white text-2xl mb-2">Ready to Start?</CardTitle>
                   </CardHeader>
-                  <CardContent className="flex-1 flex flex-col p-6">
-                    {/* Chat Messages */}
+                  <CardContent className="space-y-6">
+                    <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                      <h3 className="text-white font-semibold mb-3">Interview Details</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Position:</span>
+                          <span className="text-white">{interview.jobTitle}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Level:</span>
+                          <span className="text-white">{interview.jobLevel}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Company:</span>
+                          <span className="text-white">{interview.company}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Type:</span>
+                          <span className="text-white">{interview.interviewType}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Focus Areas:</span>
+                          <span className="text-white">{interview.focusAreas || "General"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg">
+                      <h4 className="text-blue-400 font-semibold mb-2">Interview Format</h4>
+                      <ul className="text-blue-300 text-sm space-y-1">
+                        <li>• 10 personalized questions</li>
+                        <li>• Natural conversation flow</li>
+                        <li>• AI follow-up questions</li>
+                        <li>• Detailed performance feedback</li>
+                        <li>• Estimated time: 30-45 minutes</li>
+                      </ul>
+                    </div>
+
+                    <Button
+                      onClick={startInterview}
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-lg py-6"
+                    >
+                      Start Interview
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              /* Interview Chat Interface */
+              <div className="max-w-4xl mx-auto h-full flex flex-col">
+                <div className="mb-4">
+                  <Progress value={((currentQuestion + 1) / 10) * 100} className="h-2" />
+                </div>
+
+                <Card className="flex-1 bg-gray-900/50 border-gray-800 flex flex-col">
+                  <CardContent className="flex-1 p-6 flex flex-col">
+                    {/* Messages */}
                     <div className="flex-1 overflow-y-auto space-y-4 mb-4 max-h-96">
-                      {chatHistory.map((message, index) => (
+                      {messages.map((message) => (
                         <div
-                          key={index}
+                          key={message.id}
                           className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[80%] p-3 rounded-lg ${
-                              message.type === "user" ? "bg-purple-600 text-white" : "bg-slate-700 text-gray-100"
+                            className={`max-w-[80%] p-4 rounded-lg ${
+                              message.type === "user"
+                                ? "bg-purple-600 text-white"
+                                : "bg-gray-800 text-gray-100 border border-gray-700"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap">{message.message}</p>
-                            <div className="text-xs opacity-70 mt-1">
+                            <div className="flex items-start space-x-2 mb-2">
+                              {message.type === "ai" ? (
+                                <Bot className="w-5 h-5 text-purple-400 mt-0.5" />
+                              ) : (
+                                <User className="w-5 h-5 text-white mt-0.5" />
+                              )}
+                              <span className="font-medium text-sm">
+                                {message.type === "ai" ? "AI Interviewer" : "You"}
+                              </span>
+                            </div>
+                            <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                            <div className="text-xs opacity-70 mt-2">
                               {new Date(message.timestamp).toLocaleTimeString()}
                             </div>
                           </div>
                         </div>
                       ))}
-                      {isAiThinking && (
+
+                      {isAiTyping && (
                         <div className="flex justify-start">
-                          <div className="bg-slate-700 text-gray-100 p-3 rounded-lg">
+                          <div className="bg-gray-800 text-gray-100 border border-gray-700 p-4 rounded-lg">
                             <div className="flex items-center space-x-2">
-                              <div className="animate-spin w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full"></div>
-                              <span>AI is analyzing your response...</span>
+                              <Bot className="w-5 h-5 text-purple-400" />
+                              <span className="font-medium text-sm">AI Interviewer</span>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <div className="animate-pulse flex space-x-1">
+                                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                                <div
+                                  className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
+                                  style={{ animationDelay: "0.1s" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
+                                  style={{ animationDelay: "0.2s" }}
+                                ></div>
+                              </div>
+                              <span className="text-sm text-gray-400">AI is analyzing your response...</span>
                             </div>
                           </div>
                         </div>
                       )}
-                      <div ref={chatEndRef} />
+
+                      <div ref={messagesEndRef} />
                     </div>
 
                     {/* Input Area */}
-                    {!sessionComplete && (
+                    {!isSessionComplete && (
                       <div className="flex space-x-2">
                         <Textarea
-                          value={userResponse}
-                          onChange={(e) => setUserResponse(e.target.value)}
+                          value={currentInput}
+                          onChange={(e) => setCurrentInput(e.target.value)}
                           placeholder="Type your response here..."
-                          className="flex-1 bg-slate-700 border-slate-600 text-white resize-none"
-                          rows={3}
+                          className="flex-1 bg-gray-800 border-gray-700 text-white resize-none min-h-[80px]"
                           onKeyPress={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault()
-                              sendResponse()
+                              sendMessage()
                             }
                           }}
+                          disabled={isAiTyping}
                         />
-                        <div className="flex flex-col space-y-2">
-                          <Button
-                            onClick={sendResponse}
-                            disabled={!userResponse.trim() || isAiThinking}
-                            className="bg-purple-600 hover:bg-purple-700"
-                          >
-                            <Send className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setIsRecording(!isRecording)}
-                            className="border-slate-600 text-gray-300 hover:bg-slate-700 bg-transparent"
-                          >
-                            {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                          </Button>
+                        <Button
+                          onClick={sendMessage}
+                          disabled={!currentInput.trim() || isAiTyping}
+                          className="bg-purple-600 hover:bg-purple-700 self-end"
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {isSessionComplete && (
+                      <div className="text-center p-6 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
+                        <h3 className="text-white font-semibold text-lg mb-2">Interview Complete!</h3>
+                        <p className="text-gray-400 mb-4">Generating your detailed feedback report...</p>
+                        <div className="flex items-center justify-center space-x-2 text-purple-400">
+                          <span>Redirecting to results</span>
+                          <ArrowRight className="w-4 h-4" />
                         </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Question Panel */}
-              <div className="space-y-6">
-                <Card className="bg-slate-800/50 border-slate-700">
-                  <CardHeader>
-                    <CardTitle className="text-white">Current Question</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-4 bg-slate-700/50 rounded-lg">
-                      <Badge className="mb-3 bg-purple-500/20 text-purple-400">
-                        {interview.questions[currentQuestion].type}
-                      </Badge>
-                      <p className="text-white leading-relaxed">{interview.questions[currentQuestion].question}</p>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold text-white mb-2">Tips:</h4>
-                      <ul className="space-y-1">
-                        {interview.questions[currentQuestion].tips.map((tip: string, index: number) => (
-                          <li key={index} className="text-sm text-gray-400">
-                            • {tip}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <Progress value={(timeRemaining / 300) * 100} className="h-2" />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-800/50 border-slate-700">
-                  <CardHeader>
-                    <CardTitle className="text-white">Session Progress</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {interview.questions.map((_: any, index: number) => (
-                        <div key={index} className="flex items-center space-x-3">
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              index < currentQuestion
-                                ? "bg-green-500"
-                                : index === currentQuestion
-                                  ? "bg-purple-500"
-                                  : "bg-gray-600"
-                            }`}
-                          ></div>
-                          <span
-                            className={`text-sm ${
-                              index === currentQuestion ? "text-white font-medium" : "text-gray-400"
-                            }`}
-                          >
-                            Question {index + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {!sessionComplete && (
-                  <div className="space-y-3">
-                    {currentQuestion < interview.questions.length - 1 ? (
-                      <Button
-                        onClick={handleNextQuestion}
-                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                      >
-                        Next Question
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={completeInterview}
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                      >
-                        Finish Interview
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      onClick={completeInterview}
-                      className="w-full border-red-500 text-red-400 hover:bg-red-500/10 bg-transparent"
-                    >
-                      End Session
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </SidebarInset>
       </div>

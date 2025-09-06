@@ -1,33 +1,51 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-// In-memory storage for responses (in production, use a database)
-const interviewResponses: { [key: string]: any[] } = {}
+const interviews: any[] = []
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { questionIndex, userResponse, aiResponse } = await request.json()
+    const { id } = params
+    const body = await request.json()
+    const { questionId, answer } = body
 
-    if (!interviewResponses[params.id]) {
-      interviewResponses[params.id] = []
+    const interview = interviews.find((int) => int.id === id)
+    if (!interview) {
+      return NextResponse.json({ error: "Interview not found" }, { status: 404 })
     }
 
     const response = {
-      questionIndex,
-      userResponse,
-      aiResponse,
+      questionId,
+      answer,
       timestamp: new Date().toISOString(),
     }
 
-    interviewResponses[params.id].push(response)
+    interview.responses.push(response)
 
-    return NextResponse.json({ success: true, response })
+    return NextResponse.json({
+      success: true,
+      response,
+    })
   } catch (error) {
-    console.error("Error saving response:", error)
+    console.error("Failed to save response:", error)
     return NextResponse.json({ error: "Failed to save response" }, { status: 500 })
   }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const responses = interviewResponses[params.id] || []
-  return NextResponse.json({ responses })
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params
+    const interview = interviews.find((int) => int.id === id)
+
+    if (!interview) {
+      return NextResponse.json({ error: "Interview not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      responses: interview.responses,
+    })
+  } catch (error) {
+    console.error("Failed to fetch responses:", error)
+    return NextResponse.json({ error: "Failed to fetch responses" }, { status: 500 })
+  }
 }

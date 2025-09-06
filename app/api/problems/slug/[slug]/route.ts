@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 const problems = {
-  1: {
+  "two-sum": {
     id: 1,
     title: "Two Sum",
     difficulty: "Easy",
@@ -31,28 +31,7 @@ You can return the answer in any order.`,
     ],
     tags: ["Array", "Hash Table"],
   },
-  2: {
-    id: 2,
-    title: "Longest Substring Without Repeating Characters",
-    difficulty: "Medium",
-    acceptance: "33.8%",
-    description: `Given a string s, find the length of the longest substring without repeating characters.`,
-    examples: [
-      {
-        input: 's = "abcabcbb"',
-        output: "3",
-        explanation: 'The answer is "abc", with the length of 3.',
-      },
-      {
-        input: 's = "bbbbb"',
-        output: "1",
-        explanation: 'The answer is "b", with the length of 1.',
-      },
-    ],
-    constraints: ["0 ≤ s.length ≤ 5 * 10⁴", "s consists of English letters, digits, symbols and spaces."],
-    tags: ["Hash Table", "String", "Sliding Window"],
-  },
-  3: {
+  "group-anagrams": {
     id: 3,
     title: "Group Anagrams",
     difficulty: "Medium",
@@ -66,6 +45,16 @@ An Anagram is a word or phrase formed by rearranging the letters of a different 
         output: '[["bat"],["nat","tan"],["ate","eat","tea"]]',
         explanation: "Group anagrams together.",
       },
+      {
+        input: 'strs = [""]',
+        output: '[[""]]',
+        explanation: "Single empty string forms one group.",
+      },
+      {
+        input: 'strs = ["a"]',
+        output: '[["a"]]',
+        explanation: "Single character forms one group.",
+      },
     ],
     constraints: [
       "1 ≤ strs.length ≤ 10⁴",
@@ -74,7 +63,7 @@ An Anagram is a word or phrase formed by rearranging the letters of a different 
     ],
     tags: ["Array", "Hash Table", "String", "Sorting"],
   },
-  4: {
+  "valid-parentheses": {
     id: 4,
     title: "Valid Parentheses",
     difficulty: "Easy",
@@ -105,23 +94,7 @@ An input string is valid if:
     constraints: ["1 ≤ s.length ≤ 10⁴", "s consists of parentheses only '()[]{}'."],
     tags: ["String", "Stack"],
   },
-  5: {
-    id: 5,
-    title: "Merge Intervals",
-    difficulty: "Medium",
-    acceptance: "46.9%",
-    description: `Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.`,
-    examples: [
-      {
-        input: "intervals = [[1,3],[2,6],[8,10],[15,18]]",
-        output: "[[1,6],[8,10],[15,18]]",
-        explanation: "Since intervals [1,3] and [2,6] overlap, merge them into [1,6].",
-      },
-    ],
-    constraints: ["1 ≤ intervals.length ≤ 10⁴", "intervals[i].length == 2", "0 ≤ starti ≤ endi ≤ 10⁴"],
-    tags: ["Array", "Sorting"],
-  },
-  13: {
+  "number-of-islands": {
     id: 13,
     title: "Number of Islands",
     difficulty: "Medium",
@@ -140,11 +113,21 @@ An island is surrounded by water and is formed by connecting adjacent lands hori
         output: "1",
         explanation: "There is 1 island.",
       },
+      {
+        input: `grid = [
+  ["1","1","0","0","0"],
+  ["1","1","0","0","0"],
+  ["0","0","1","0","0"],
+  ["0","0","0","1","1"]
+]`,
+        output: "3",
+        explanation: "There are 3 islands.",
+      },
     ],
     constraints: ["m == grid.length", "n == grid[i].length", "1 ≤ m, n ≤ 300", "grid[i][j] is '0' or '1'."],
     tags: ["Array", "Depth-First Search", "Breadth-First Search", "Union Find", "Matrix"],
   },
-  26: {
+  "lru-cache-implementation": {
     id: 26,
     title: "LRU Cache Implementation",
     difficulty: "Medium",
@@ -175,9 +158,8 @@ The functions get and put must each run in O(1) average time complexity.`,
   },
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const problemId = Number.parseInt(params.id)
-  const problem = problems[problemId as keyof typeof problems]
+export async function GET(request: Request, { params }: { params: { slug: string } }) {
+  const problem = problems[params.slug as keyof typeof problems]
 
   if (!problem) {
     return NextResponse.json({ error: "Problem not found" }, { status: 404 })
