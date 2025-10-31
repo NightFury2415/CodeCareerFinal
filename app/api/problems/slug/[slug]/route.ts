@@ -159,11 +159,16 @@ The functions get and put must each run in O(1) average time complexity.`,
 }
 
 export async function GET(request: Request, { params }: { params: { slug: string } }) {
-  const problem = problems[params.slug as keyof typeof problems]
+  try {
+    const problem = problems[params.slug as keyof typeof problems]
 
-  if (!problem) {
-    return NextResponse.json({ error: "Problem not found" }, { status: 404 })
+    if (!problem) {
+      return NextResponse.json({ error: "Problem not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ problem })
+  } catch (error) {
+    console.error("[v0] Error fetching problem:", error)
+    return NextResponse.json({ error: "Failed to fetch problem" }, { status: 500 })
   }
-
-  return NextResponse.json({ problem })
 }
