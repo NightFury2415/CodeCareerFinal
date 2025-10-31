@@ -11,20 +11,22 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Download, Eye, Plus, Trash2, Save, FileText, Sparkles } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 
 export default function ResumeBuilderPage() {
+  const [isSaving, setIsSaving] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [resumeData, setResumeData] = useState({
     personal: {
-      firstName: "John",
-      lastName: "Doe",
-      email: "john@example.com",
-      phone: "+1 (555) 123-4567",
-      location: "San Francisco, CA",
-      linkedin: "linkedin.com/in/johndoe",
-      github: "github.com/johndoe",
-      website: "johndoe.dev",
-      summary:
-        "Experienced software engineer with 5+ years of experience building scalable web applications and leading cross-functional teams.",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      location: "",
+      linkedin: "",
+      github: "",
+      website: "",
+      summary: "",
     },
     experience: [
       {
@@ -205,24 +207,236 @@ export default function ResumeBuilderPage() {
     }
   }
 
-  const downloadPDF = () => {
-    // This would integrate with a PDF generation service
-    alert("PDF download functionality would be implemented here")
+  const downloadPDF = async () => {
+    try {
+      setIsGenerating(true)
+      const response = await fetch("/api/resume/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData,
+          html: generateResumeHTML()
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate PDF: ${response.statusText}`)
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${resumeData.personal.firstName}_${resumeData.personal.lastName}_resume.pdf`.toLowerCase().replace(/\s+/g, '_')
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success("Resume downloaded successfully!")
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to generate PDF")
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
-  const saveResume = async () => {
+  const generateResumeHTML = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Resume - ${resumeData.personal.firstName} ${resumeData.personal.lastName}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              line-height: 1.6;
+              color: #1a1a1a;
+              max-width: 8.5in;
+              margin: 0 auto;
+              padding: 0.75in;
+              background-color: #ffffff;
+            }
+            .header {
+              text-align: left;
+              margin-bottom: 2rem;
+              border-bottom: 2px solid #2563eb;
+              padding-bottom: 1rem;
+            }
+            .name {
+              font-size: 2rem;
+              font-weight: 700;
+              color: #1a1a1a;
+              margin-bottom: 0.5rem;
+            }
+            .contact {
+              font-size: 0.875rem;
+              color: #4b5563;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 1rem;
+            }
+            .section {
+              margin-bottom: 2rem;
+            }
+            .section-title {
+              font-size: 1.25rem;
+              font-weight: 600;
+              color: #2563eb;
+              border-bottom: 1px solid #e5e7eb;
+              padding-bottom: 0.5rem;
+              margin-bottom: 1rem;
+            }
+            .experience-item, .education-item {
+              margin-bottom: 1.5rem;
+            }
+            .item-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 0.5rem;
+            }
+            .item-title {
+              font-weight: 600;
+              color: #1a1a1a;
+            }
+            .item-subtitle {
+              color: #4b5563;
+            }
+            .item-date {
+              color: #6b7280;
+              font-size: 0.875rem;
+            }
+            .item-description {
+              color: #4b5563;
+              white-space: pre-line;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="name">${resumeData.personal.firstName} ${resumeData.personal.lastName}</div>
+            <div class="contact">
+              ${resumeData.personal.email ? `<span>${resumeData.personal.email}</span>` : ''}
+              ${resumeData.personal.phone ? `<span>${resumeData.personal.phone}</span>` : ''}
+              ${resumeData.personal.location ? `<span>${resumeData.personal.location}</span>` : ''}
+              ${resumeData.personal.linkedin ? `<span>LinkedIn: ${resumeData.personal.linkedin}</span>` : ''}
+              ${resumeData.personal.github ? `<span>GitHub: ${resumeData.personal.github}</span>` : ''}
+              ${resumeData.personal.website ? `<span>${resumeData.personal.website}</span>` : ''}
+            </div>
+          </div>
+
+          ${resumeData.personal.summary ? `
+            <div class="section">
+              <div class="section-title">Professional Summary</div>
+              <div class="item-description">${resumeData.personal.summary}</div>
+            </div>
+          ` : ''}
+
+          ${resumeData.experience.length > 0 ? `
+            <div class="section">
+              <div class="section-title">Experience</div>
+              ${resumeData.experience.map(exp => `
+                <div class="experience-item">
+                  <div class="item-header">
+                    <div>
+                      <div class="item-title">${exp.title}</div>
+                      <div class="item-subtitle">${exp.company} - ${exp.location}</div>
+                    </div>
+                    <div class="item-date">${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}</div>
+                  </div>
+                  <div class="item-description">${exp.description}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${resumeData.education.length > 0 ? `
+            <div class="section">
+              <div class="section-title">Education</div>
+              ${resumeData.education.map(edu => `
+                <div class="education-item">
+                  <div class="item-header">
+                    <div>
+                      <div class="item-title">${edu.degree}</div>
+                      <div class="item-subtitle">${edu.school} - ${edu.location}</div>
+                    </div>
+                    <div class="item-date">${edu.graduationYear}</div>
+                  </div>
+                  ${edu.gpa ? `<div class="item-description">GPA: ${edu.gpa}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${resumeData.skills?.technical?.length > 0 || resumeData.skills?.soft?.length > 0 ? `
+            <div class="section">
+              <div class="section-title">Skills</div>
+              ${resumeData.skills?.technical?.length > 0 ? `
+                <div class="skills-category">
+                  <div class="item-title">Technical Skills</div>
+                  <div class="item-description">${resumeData.skills.technical.join(', ')}</div>
+                </div>
+              ` : ''}
+              ${resumeData.skills?.soft?.length > 0 ? `
+                <div class="skills-category">
+                  <div class="item-title">Soft Skills</div>
+                  <div class="item-description">${resumeData.skills.soft.join(', ')}</div>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          ${resumeData.projects?.length > 0 ? `
+            <div class="section">
+              <div class="section-title">Projects</div>
+              ${resumeData.projects.map(project => `
+                <div class="experience-item">
+                  <div class="item-header">
+                    <div class="item-title">${project.name}</div>
+                    ${project.url ? `<a href="${project.url}" class="item-subtitle">${project.url}</a>` : ''}
+                  </div>
+                  <div class="item-description">
+                    ${project.description}
+                    ${project.technologies?.length > 0 ? `
+                      <div class="item-subtitle">Technologies: ${project.technologies.join(', ')}</div>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </body>
+      </html>
+    `
+  }
+
+  const handleSave = async () => {
     try {
+      setIsSaving(true)
       const response = await fetch("/api/resume/save", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(resumeData),
       })
 
-      if (response.ok) {
-        alert("Resume saved successfully!")
+      if (!response.ok) {
+        throw new Error("Failed to save resume")
       }
+
+      const data = await response.json()
+      toast.success("Resume saved successfully!")
     } catch (error) {
-      console.error("Failed to save resume:", error)
+      console.error("Error saving resume:", error)
+      toast.error("Failed to save resume. Please try again.")
+    } finally {
+      setIsSaving(false)
     }
   }
 

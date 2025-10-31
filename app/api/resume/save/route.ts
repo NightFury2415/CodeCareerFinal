@@ -5,32 +5,45 @@ const resumeStorage: any[] = []
 
 export async function POST(request: Request) {
   try {
-    const resumeData = await request.json()
+    const resume = await request.json()
 
-    // In a real application, you would save this to your database
-    // For now, we'll just simulate saving
+    // support both `personal` and legacy `personalInfo` shapes
+    const personal = resume?.personal || resume?.personalInfo || {}
+
+    console.log("/api/resume/save received", {
+      hasResume: !!resume,
+      personalKeys: Object.keys(personal),
+    })
+
+    // Validate required fields
+    if (!personal?.firstName || !personal?.lastName) {
+      return NextResponse.json(
+        { error: "Please provide at least first and last name" },
+        { status: 400 }
+      )
+    }
+
+    // TODO: Save resume to database
+    // For demo purposes, we'll simulate a successful save
     const savedResume = {
-      id: Date.now().toString(),
-      ...resumeData,
-      createdAt: new Date().toISOString(),
+      ...resume,
+      id: Math.random().toString(36).substring(7),
       updatedAt: new Date().toISOString(),
     }
 
-    resumeStorage.push(savedResume)
-
-    return NextResponse.json({
+    return NextResponse.json({ 
       success: true,
-      message: "Resume saved successfully",
-      resumeId: savedResume.id,
+      resume: savedResume,
+      message: "Resume saved successfully"
     })
   } catch (error) {
     console.error("Error saving resume:", error)
     return NextResponse.json(
-      {
-        success: false,
+      { 
         error: "Failed to save resume",
+        message: error instanceof Error ? error.message : "Unknown error occurred"
       },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }
